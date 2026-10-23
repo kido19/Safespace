@@ -1,0 +1,46 @@
+{
+  "hotlines": [
+    {
+      "name": "National Mental Health Hotline (Ethiopia)",
+      "number": "8335",
+      "hours": "24/7",
+      "notes": "Shortcode listed by the Ministry of Health. If it does not connect, please use the emergency numbers below."
+    },
+    {
+      "name": "Amanuel Mental Health Specialized Hospital",
+      "number": "+251 11 275 7699",
+      "hours": "24/7 Emergency",
+      "notes": "Ethiopia's national psychiatric emergency and referral hub in Addis Ababa."
+    },
+    {
+      "name": "Emergency Ambulance (Red Cross)",
+      "number": "907",
+      "hours": "24/7",
+      "notes": "Nationwide medical emergency and first aid."
+    },
+    {
+      "name": "Police (General Emergency)",
+      "number": "991",
+      "hours": "24/7",
+      "notes": "For immediate danger or if someone is at risk of harm."
+    },
+    {
+      "name": "General Emergency (Alternative)",
+      "number": "911",
+      "hours": "24/7",
+      "notes": "General emergency services."
+    }
+  ],
+  "selfHelp": [
+    "You are not alone. This feeling can pass.",
+    "Try 4-7-8 breathing: inhale for 4 seconds, hold for 7 seconds, exhale for 8 seconds.",
+    "Talk to someone you trust today. You do not have to carry this alone.",
+    "Step outside for fresh air or splash cold water on your face to help reset your nervous system."
+  ],
+  "howToSupport": [
+    "Listen without judgment.",
+    "Ask directly: 'Are you thinking about suicide?' Asking does not plant the idea; it opens a door for them to talk.",
+    "Stay with them if they are in immediate danger and call a hotline together.",
+    "Do not promise to keep it a secret if their life is at risk."
+  ]
+}
