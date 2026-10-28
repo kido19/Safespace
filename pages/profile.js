@@ -37,11 +37,29 @@ export default function ProfilePage() {
     if (savedMood) setWellBeingRating(savedMood);
   }, []);
 
-  const totalEchoesCount = userPosts.reduce((sum, p) => sum + (p.echoesCount || 12), 0);
+  const totalEchoesCount = userPosts.reduce((sum, p) => sum + (p.echoesCount || 0), 0);
 
   const handleMoodSelect = (rating) => {
     setWellBeingRating(rating);
     localStorage.setItem('safespace_wellbeing_rating', rating);
+  };
+
+  // Delete user post
+  const handleDeleteUserPost = async (postId, postBody) => {
+    if (!window.confirm('Are you sure you want to delete this confession?')) return;
+
+    try {
+      const updatedPosts = userPosts.filter((p) => p.id !== postId && p.body !== postBody);
+      setUserPosts(updatedPosts);
+      localStorage.setItem('safespace_user_posts', JSON.stringify(updatedPosts));
+
+      // Send delete request to API
+      if (postId) {
+        fetch(`/api/posts?id=${postId}`, { method: 'DELETE' }).catch(() => {});
+      }
+    } catch (err) {
+      console.warn('Failed to delete user post:', err);
+    }
   };
 
   const menuItems = [
@@ -89,13 +107,13 @@ export default function ProfilePage() {
           <div className="flex items-center justify-around max-w-xs mx-auto pt-3 border-t border-blue-100/60 mt-3">
             <button onClick={() => setActiveModal('my-posts')} className="text-center group">
               <span className="text-base font-extrabold text-slate-900 block leading-tight group-hover:text-[#4F65F6]">
-                {userPosts.length || 1}
+                {userPosts.length}
               </span>
               <span className="text-[11px] text-slate-400 font-medium">My Posts</span>
             </button>
             <button onClick={() => setActiveModal('my-posts')} className="text-center group">
               <span className="text-base font-extrabold text-[#4F65F6] block leading-tight">
-                {totalEchoesCount || 18}
+                {totalEchoesCount}
               </span>
               <span className="text-[11px] text-slate-400 font-medium">Reactions Received</span>
             </button>
@@ -217,14 +235,14 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* MODAL: My Posts & Advice Received Breakdown */}
+      {/* MODAL: My Posts & Advice Received Breakdown with Delete Action */}
       {activeModal === 'my-posts' && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-xl border border-slate-100 relative max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
                 <Sparkles className="w-4 h-4 text-[#4F65F6]" />
-                <h3 className="font-extrabold text-slate-900 text-base">Reactions & Advice Received</h3>
+                <h3 className="font-extrabold text-slate-900 text-base">My Posts & Reactions</h3>
               </div>
               <button onClick={() => setActiveModal(null)} className="p-1 text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -232,61 +250,41 @@ export default function ProfilePage() {
             </div>
 
             <div className="overflow-y-auto space-y-3 flex-1 pr-1">
-              <div className="bg-[#F8FAFC] border border-slate-200 rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-extrabold text-[#4F65F6] bg-[#EEF2FF] px-2.5 py-0.5 rounded-full">
-                    Posted as {handle}
-                  </span>
-                  <span className="text-[10px] font-semibold text-slate-400">1h ago</span>
+              {userPosts.length === 0 ? (
+                <div className="text-center py-6 space-y-2">
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                  <p className="text-xs font-bold text-slate-700">No posts shared yet</p>
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    You haven't posted anything yet under <span className="font-bold text-[#4F65F6]">{handle}</span>. When you're ready, share what's on your mind!
+                  </p>
                 </div>
+              ) : (
+                userPosts.map((p, idx) => (
+                  <div key={idx} className="bg-[#F8FAFC] border border-slate-200 rounded-2xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-extrabold text-[#4F65F6] bg-[#EEF2FF] px-2.5 py-0.5 rounded-full">
+                        Posted as {p.handle || handle}
+                      </span>
+                      <button
+                        onClick={() => handleDeleteUserPost(p.id, p.body)}
+                        className="text-xs text-rose-600 hover:text-rose-800 font-bold flex items-center space-x-1 p-1 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Delete this confession"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
 
-                <p className="text-xs font-semibold text-slate-800 leading-relaxed italic">
-                  "Late night anxiety hit again. Remind yourselves that it is okay to rest when you are exhausted."
-                </p>
+                    <p className="text-xs font-semibold text-slate-800 leading-relaxed italic">
+                      "{p.body}"
+                    </p>
 
-                {/* Custom Reactions & Badges Breakdown */}
-                <div className="space-y-1.5 pt-2 border-t border-slate-200/80">
-                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block">
-                    Support & Custom Reactions Received:
-                  </span>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    <span className="bg-[#EEF2FF] text-[#4F65F6] text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-[#D9E2FE]">
-                      👂 8 I hear you
-                    </span>
-                    <span className="bg-[#F5F3FF] text-[#8B5CF6] text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-[#EDE9FE]">
-                      🤝 5 Not alone
-                    </span>
-                    <span className="bg-[#F0F9FF] text-[#0284C7] text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-[#E0F2FE]">
-                      💪 3 Strength
-                    </span>
-                    <span className="bg-purple-50 text-purple-700 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-purple-200">
-                      💜 4 You matter
-                    </span>
-                    <span className="bg-rose-50 text-rose-700 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-rose-200">
-                      🌸 2 Sending love
-                    </span>
-                    <span className="bg-emerald-50 text-emerald-700 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-200">
-                      ✨ Stay strong
-                    </span>
+                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-[11px] font-bold text-[#4F65F6]">
+                      <span>{p.echoesCount || 0} Total Echoes Received</span>
+                    </div>
                   </div>
-                </div>
-
-                {/* Advice Comments Received */}
-                <div className="pt-2 border-t border-slate-200/80 space-y-1.5">
-                  <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block flex items-center space-x-1">
-                    <MessageCircle className="w-3 h-3 text-[#4F65F6] inline" />
-                    <span>Peer Advice Comments (2):</span>
-                  </span>
-                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-0.5 text-[11px]">
-                    <span className="font-bold text-slate-900 block">KindLeaf:</span>
-                    <p className="text-slate-600">"I hear you so deeply. You are doing your best and that is enough."</p>
-                  </div>
-                  <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-0.5 text-[11px]">
-                    <span className="font-bold text-slate-900 block">Moonlit:</span>
-                    <p className="text-slate-600">"Take a gentle deep breath. We are in this together."</p>
-                  </div>
-                </div>
-              </div>
+                ))
+              )}
             </div>
 
             <button
@@ -355,16 +353,6 @@ export default function ProfilePage() {
                 </div>
                 <p className="text-slate-700 text-[11.5px]">
                   Peers reacted to your confession with <strong>💜 You matter</strong>, <strong>🌸 Sending love</strong>, and <strong>✨ Stay strong</strong>!
-                </p>
-              </div>
-
-              <div className="bg-[#F8FAFC] border border-slate-200 p-3 rounded-2xl space-y-1 text-xs">
-                <div className="flex items-center space-x-1.5 text-slate-800 font-bold">
-                  <MessageCircle className="w-3.5 h-3.5 text-[#4F65F6]" />
-                  <span>KindLeaf commented on your post</span>
-                </div>
-                <p className="text-slate-600 text-[11.5px]">
-                  "I hear you so deeply. You are doing your best and that is enough."
                 </p>
               </div>
             </div>

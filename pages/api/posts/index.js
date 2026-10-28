@@ -131,5 +131,24 @@ export default async function handler(req, res) {
     });
   }
 
+  // DELETE — Delete post by ID
+  if (req.method === "DELETE") {
+    const id = req.query.id || req.body?.id;
+    if (!id) return res.status(400).json({ error: "Post ID required" });
+
+    // Remove from inMemoryPosts
+    inMemoryPosts = inMemoryPosts.filter((p) => p.id !== id);
+
+    try {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        await supabaseAdmin.from("posts").delete().eq("id", id);
+      }
+    } catch (err) {
+      console.warn("Supabase delete fallback:", err.message);
+    }
+
+    return res.status(200).json({ ok: true, deletedId: id });
+  }
+
   return res.status(405).json({ error: "Method not allowed" });
 }

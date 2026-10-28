@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MoreHorizontal, Heart, MessageCircle, Check, Bookmark, Flag, Copy, Send, X, Plus, Sparkles, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { MoreHorizontal, Heart, MessageCircle, Check, Bookmark, Flag, Copy, Send, X, Plus, Sparkles, ShieldAlert, Trash2 } from 'lucide-react';
 
 export default function PostCard({ post, onEchoSuccess }) {
   const [echoes, setEchoes] = useState({
@@ -16,6 +16,7 @@ export default function PostCard({ post, onEchoSuccess }) {
   const [displayTime, setDisplayTime] = useState('Just now');
   const [toastMsg, setToastMsg] = useState('');
   const [isLiked, setIsLiked] = useState(false);
+  const [myHandle, setMyHandle] = useState('');
 
   // Dropdown options menu state (...)
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
@@ -33,6 +34,11 @@ export default function PostCard({ post, onEchoSuccess }) {
   const [showRepliesModal, setShowRepliesModal] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [repliesList, setRepliesList] = useState([]);
+
+  useEffect(() => {
+    const handleSaved = localStorage.getItem('safespace_handle') || 'QuietSun';
+    setMyHandle(handleSaved);
+  }, []);
 
   // Load post specific comments & saved state on mount
   useEffect(() => {
@@ -98,7 +104,34 @@ export default function PostCard({ post, onEchoSuccess }) {
 
   const totalEchoes = (echoes.hear || 0) + (echoes.alone || 0) + (echoes.strength || 0) + (echoes.matter || 0) + (echoes.love || 0) + (echoes.custom || 0);
 
-  // Send Echo Reaction & Add Real Dynamic Notification
+  // Is this post created by the current user?
+  const isMyPost = post.handle === myHandle || post.id?.startsWith('user-');
+
+  // Delete Post Action
+  const handleDeletePost = async () => {
+    setShowOptionsMenu(false);
+    if (!window.confirm('Are you sure you want to delete this confession?')) return;
+
+    try {
+      // Remove from localStorage
+      const userPostsStr = localStorage.getItem('safespace_user_posts');
+      if (userPostsStr) {
+        let userPosts = JSON.parse(userPostsStr);
+        userPosts = userPosts.filter((p) => p.id !== post.id && p.body !== post.body);
+        localStorage.setItem('safespace_user_posts', JSON.stringify(userPosts));
+      }
+
+      // Send DELETE request to API
+      fetch(`/api/posts?id=${post.id}`, { method: 'DELETE' }).catch(() => {});
+
+      setToastMsg('🗑️ Confession deleted successfully.');
+      if (onEchoSuccess) onEchoSuccess();
+    } catch (err) {
+      console.warn('Failed to delete post:', err);
+    }
+  };
+
+  // Send Echo Reaction
   const handleEcho = async (type, customLabel) => {
     if (isSubmitting) return;
 
@@ -128,25 +161,6 @@ export default function PostCard({ post, onEchoSuccess }) {
     setToastMsg(`" ${echoNames[type]} " sent!`);
     setTimeout(() => setToastMsg(''), 3000);
 
-    // Save dynamic notification for author
-    try {
-      const myHandle = localStorage.getItem('safespace_handle') || 'QuietSun';
-      const notifObj = {
-        id: `notif-${Date.now()}`,
-        type: 'echo',
-        sender: myHandle,
-        echoType: echoNames[type],
-        postTitle: post.body ? post.body.substring(0, 35) + '...' : 'your post',
-        time: 'Just now',
-        unread: true,
-      };
-
-      const notifsStr = localStorage.getItem('safespace_notifications');
-      let notifs = [];
-      if (notifsStr) notifs = JSON.parse(notifsStr);
-      localStorage.setItem('safespace_notifications', JSON.stringify([notifObj, ...notifs]));
-    } catch (err) {}
-
     setIsSubmitting(true);
 
     try {
@@ -170,16 +184,16 @@ export default function PostCard({ post, onEchoSuccess }) {
     }
   };
 
-  // Add Comment / Reply and save dynamic notification
+  // Add Comment / Reply
   const handleAddReply = (e) => {
     e.preventDefault();
     const trimmed = replyText.trim();
     if (!trimmed) return;
 
-    const myHandle = localStorage.getItem('safespace_handle') || 'QuietSun';
+    const savedHandle = localStorage.getItem('safespace_handle') || 'QuietSun';
     const newReply = {
       id: `reply-${Date.now()}`,
-      handle: myHandle,
+      handle: savedHandle,
       body: trimmed,
       time: 'Just now',
     };
@@ -190,25 +204,7 @@ export default function PostCard({ post, onEchoSuccess }) {
 
     try {
       localStorage.setItem(`safespace_comments_${post.id}`, JSON.stringify(updated));
-
-      // Save dynamic notification
-      const notifObj = {
-        id: `notif-reply-${Date.now()}`,
-        type: 'reply',
-        sender: myHandle,
-        replyBody: trimmed.substring(0, 40) + '...',
-        postTitle: post.body ? post.body.substring(0, 35) + '...' : 'your post',
-        time: 'Just now',
-        unread: true,
-      };
-
-      const notifsStr = localStorage.getItem('safespace_notifications');
-      let notifs = [];
-      if (notifsStr) notifs = JSON.parse(notifsStr);
-      localStorage.setItem('safespace_notifications', JSON.stringify([notifObj, ...notifs]));
-    } catch (err) {
-      console.warn('Failed to save reply:', err);
-    }
+    } catch (err) {}
 
     setToastMsg('Your anonymous reply was added to this post!');
     setTimeout(() => setToastMsg(''), 3000);
@@ -352,6 +348,16 @@ export default function PostCard({ post, onEchoSuccess }) {
           {/* Post Options Dropdown Menu */}
           {showOptionsMenu && (
             <div className="absolute right-0 top-9 bg-white border border-[#E2E8F0] rounded-2xl shadow-xl p-2 w-48 z-30 space-y-1 animate-fadeIn">
+              {isMyPost && (
+                <button
+                  onClick={handleDeletePost}
+                  className="w-full flex items-center space-x-2 p-2 rounded-xl text-[12px] font-bold text-rose-600 hover:bg-rose-50 transition-colors text-left"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete My Post</span>
+                </button>
+              )}
+
               <button
                 onClick={handleToggleLike}
                 className="w-full flex items-center space-x-2 p-2 rounded-xl text-[12px] font-bold text-slate-700 hover:bg-[#EEF2FF] hover:text-[#4F65F6] transition-colors text-left"
