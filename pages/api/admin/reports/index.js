@@ -1,14 +1,26 @@
-import { supabase } from "../../../lib/supabase";
-import { rateLimit, ipOf } from "../../../lib/rate-limit";
+import { supabaseAdmin } from "../../../../lib/supabase-admin";
+import { requireAdmin } from "../../../../lib/admin-auth";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
-  if (!rateLimit(ipOf(req), 5, 60_000)) return res.status(429).json({ error: "slow down" });
+  if (!requireAdmin(req, res)) return;
 
-  const { post_id, reason } = req.body || {};
-  if (!post_id) return res.status(400).json({ error: "post_id required" });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-  const { error } = await supabase.from("reports").insert({ post_id, reason: reason || null });
-  if (error) return res.status(500).json({ error: error.message });
-  return res.json({ ok: true });
+  try {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const { data, error } = await supabaseAdmin
+        .from("reports")
+        .select("*")
+        .eq("resolved", false)
+        .order("created_at", { ascending: false });
+
+      if (!error && data) return res.json(data);
+    }
+  } catch (err) {
+    console.warn("Supabase reports fetch fallback:", err.message);
+  }
+
+  return res.json([]);
 }
