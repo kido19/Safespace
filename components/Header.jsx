@@ -5,7 +5,7 @@ import { Heart, Bell, ChevronLeft, Check, BellOff } from 'lucide-react';
 
 export default function Header({ title, showBack = false, rightElement }) {
   const router = useRouter();
-  const [handle, setHandle] = useState('QuietSun');
+  const [handle, setHandle] = useState('Anonymous');
   const [showNotif, setShowNotif] = useState(false);
   const [notifsList, setNotifsList] = useState([]);
 
@@ -15,13 +15,16 @@ export default function Header({ title, showBack = false, rightElement }) {
       setHandle(saved);
     }
 
-    // Load actual dynamic notifications from local storage
+    // Load dynamic notifications ONLY if sent to current handle by another peer (not self)
     try {
       const notifsStr = localStorage.getItem('safespace_notifications');
       if (notifsStr) {
         const parsed = JSON.parse(notifsStr);
         if (Array.isArray(parsed)) {
-          setNotifsList(parsed);
+          const filtered = parsed.filter(
+            (n) => n.forHandle && n.forHandle === saved && n.sender && n.sender !== saved
+          );
+          setNotifsList(filtered);
         }
       }
     } catch (err) {}

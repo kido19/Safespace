@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { MoreHorizontal, Heart, MessageCircle, Check, Bookmark, Flag, Copy, Send, X, Plus, Sparkles, ShieldAlert, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { MoreHorizontal, Heart, MessageCircle, Check, Bookmark, Flag, Copy, Send, X, Plus, Sparkles, ShieldAlert, Trash2, Mic, Play, Pause, Volume2 } from 'lucide-react';
 
 export default function PostCard({ post, onEchoSuccess }) {
   const [echoes, setEchoes] = useState({
@@ -13,6 +13,8 @@ export default function PostCard({ post, onEchoSuccess }) {
 
   const [activeEchoes, setActiveEchoes] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isVoicePlaying, setIsVoicePlaying] = useState(false);
+  const voiceAudioRef = useRef(null);
   const [displayTime, setDisplayTime] = useState('Just now');
   const [toastMsg, setToastMsg] = useState('');
   const [isLiked, setIsLiked] = useState(false);
@@ -36,7 +38,7 @@ export default function PostCard({ post, onEchoSuccess }) {
   const [repliesList, setRepliesList] = useState([]);
 
   useEffect(() => {
-    const handleSaved = localStorage.getItem('safespace_handle') || 'QuietSun';
+    const handleSaved = localStorage.getItem('safespace_handle') || 'Anonymous';
     setMyHandle(handleSaved);
   }, []);
 
@@ -52,11 +54,6 @@ export default function PostCard({ post, onEchoSuccess }) {
         if (Array.isArray(parsed)) {
           setRepliesList(parsed);
         }
-      } else if (post.id === 'seed-1') {
-        setRepliesList([
-          { id: 'r1', handle: 'KindLeaf', body: 'I hear you so deeply. You are doing your best and that is enough.', time: '1h ago' },
-          { id: 'r2', handle: 'Moonlit', body: 'Take a gentle deep breath. We are in this together.', time: '30m ago' },
-        ]);
       } else {
         setRepliesList([]);
       }
@@ -105,14 +102,51 @@ export default function PostCard({ post, onEchoSuccess }) {
   const totalEchoes = (echoes.hear || 0) + (echoes.alone || 0) + (echoes.strength || 0) + (echoes.matter || 0) + (echoes.love || 0) + (echoes.custom || 0);
 
   // Is this post created by the current user?
-  const isMyPost = post.handle === myHandle || post.id?.startsWith('user-');
+  // Strictly checks secret author tokens and local created posts array
+  const checkIsMyPost = () => {
+    if (!post?.id) return false;
+    try {
+      // 1. Check secret author tokens stored in localStorage for this specific post ID
+      const tokensStr = localStorage.getItem('safespace_post_tokens');
+      if (tokensStr) {
+        const tokens = JSON.parse(tokensStr);
+        if (tokens[post.id]) return true;
+      }
 
-  // Delete Post Action
+      // 2. Check local user created posts
+      const userPostsStr = localStorage.getItem('safespace_user_posts');
+      if (userPostsStr) {
+        const userPosts = JSON.parse(userPostsStr);
+        if (Array.isArray(userPosts) && userPosts.some((p) => p.id === post.id || (p.body && post.body && p.body.trim() === post.body.trim()))) {
+          return true;
+        }
+      }
+    } catch (err) {}
+    return false;
+  };
+
+  const isMyPost = checkIsMyPost();
+
+  // Delete Post Action (Only available if isMyPost is true)
   const handleDeletePost = async () => {
     setShowOptionsMenu(false);
+    if (!isMyPost) {
+      alert('You are not authorized to delete another person\'s post.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this confession?')) return;
 
     try {
+      // Retrieve secret token for this post if available
+      let myToken = '';
+      try {
+        const tokensStr = localStorage.getItem('safespace_post_tokens');
+        if (tokensStr) {
+          const tokens = JSON.parse(tokensStr);
+          myToken = tokens[post.id] || '';
+        }
+      } catch (e) {}
+
       // Remove from localStorage
       const userPostsStr = localStorage.getItem('safespace_user_posts');
       if (userPostsStr) {
@@ -121,8 +155,20 @@ export default function PostCard({ post, onEchoSuccess }) {
         localStorage.setItem('safespace_user_posts', JSON.stringify(userPosts));
       }
 
-      // Send DELETE request to API
-      fetch(`/api/posts?id=${post.id}`, { method: 'DELETE' }).catch(() => {});
+      // Send DELETE request to API with secret author token
+      const res = await fetch(`/api/posts?id=${post.id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-author-token': myToken,
+          'x-user-handle': myHandle,
+        },
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'You are not authorized to delete this post.');
+        return;
+      }
 
       setToastMsg('🗑️ Confession deleted successfully.');
       if (onEchoSuccess) onEchoSuccess();
@@ -161,6 +207,25 @@ export default function PostCard({ post, onEchoSuccess }) {
     setToastMsg(`" ${echoNames[type]} " sent!`);
     setTimeout(() => setToastMsg(''), 3000);
 
+    // Save notification for post author ONLY if the post belongs to another peer
+    if (post.handle && myHandle && post.handle !== myHandle) {
+      try {
+        const notifsStr = localStorage.getItem('safespace_notifications');
+        let notifs = notifsStr ? JSON.parse(notifsStr) : [];
+        notifs.unshift({
+          id: `notif-${Date.now()}`,
+          forHandle: post.handle,
+          sender: myHandle,
+          type: 'echo',
+          echoType: echoNames[type] || 'Support',
+          postTitle: post.body ? `"${post.body.substring(0, 20)}..."` : 'your post',
+          time: 'Just now',
+          unread: true,
+        });
+        localStorage.setItem('safespace_notifications', JSON.stringify(notifs));
+      } catch (e) {}
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -190,7 +255,7 @@ export default function PostCard({ post, onEchoSuccess }) {
     const trimmed = replyText.trim();
     if (!trimmed) return;
 
-    const savedHandle = localStorage.getItem('safespace_handle') || 'QuietSun';
+    const savedHandle = localStorage.getItem('safespace_handle') || 'Anonymous';
     const newReply = {
       id: `reply-${Date.now()}`,
       handle: savedHandle,
@@ -204,6 +269,23 @@ export default function PostCard({ post, onEchoSuccess }) {
 
     try {
       localStorage.setItem(`safespace_comments_${post.id}`, JSON.stringify(updated));
+
+      // Save notification for post author ONLY if the post belongs to another peer
+      if (post.handle && savedHandle && post.handle !== savedHandle) {
+        const notifsStr = localStorage.getItem('safespace_notifications');
+        let notifs = notifsStr ? JSON.parse(notifsStr) : [];
+        notifs.unshift({
+          id: `notif-${Date.now()}`,
+          forHandle: post.handle,
+          sender: savedHandle,
+          type: 'reply',
+          replyBody: trimmed.substring(0, 30),
+          postTitle: post.body ? `"${post.body.substring(0, 20)}..."` : 'your post',
+          time: 'Just now',
+          unread: true,
+        });
+        localStorage.setItem('safespace_notifications', JSON.stringify(notifs));
+      }
     } catch (err) {}
 
     setToastMsg('Your anonymous reply was added to this post!');
@@ -279,6 +361,44 @@ export default function PostCard({ post, onEchoSuccess }) {
     navigator.clipboard.writeText(window.location.href);
     setToastMsg('Anonymous link copied to clipboard!');
     setTimeout(() => setToastMsg(''), 3000);
+  };
+
+  const toggleVoicePlayback = () => {
+    if (isVoicePlaying) {
+      if (voiceAudioRef.current) {
+        try {
+          voiceAudioRef.current.pause();
+        } catch (e) {}
+      }
+      setIsVoicePlaying(false);
+      return;
+    }
+
+    if (post.audioUrl && post.audioUrl !== 'simulated-audio' && !post.audioUrl.startsWith('simulated')) {
+      try {
+        if (!voiceAudioRef.current) {
+          voiceAudioRef.current = new Audio(post.audioUrl);
+          voiceAudioRef.current.onended = () => setIsVoicePlaying(false);
+        }
+        voiceAudioRef.current.play().then(() => {
+          setIsVoicePlaying(true);
+        }).catch(() => {
+          simulatePlayback();
+        });
+      } catch (err) {
+        simulatePlayback();
+      }
+    } else {
+      simulatePlayback();
+    }
+  };
+
+  const simulatePlayback = () => {
+    setIsVoicePlaying(true);
+    const duration = post.audioDuration && post.audioDuration > 0 ? post.audioDuration : 5;
+    setTimeout(() => {
+      setIsVoicePlaying(false);
+    }, duration * 1000);
   };
 
   const getAvatarStyles = (handleStr) => {
@@ -390,6 +510,44 @@ export default function PostCard({ post, onEchoSuccess }) {
       <p className="text-[#1D2939] text-[13.5px] leading-[1.55] font-normal whitespace-pre-wrap">
         {post.body}
       </p>
+
+      {/* Voice Note Audio Player */}
+      {(post.hasVoiceNote || post.audioUrl) && (
+        <div className="bg-[#EEF2FF] border border-[#D9E2FE] rounded-2xl p-3 flex items-center justify-between shadow-2xs">
+          <div className="flex items-center space-x-3">
+            <button
+              type="button"
+              onClick={toggleVoicePlayback}
+              className="w-9 h-9 rounded-full bg-[#4F65F6] text-white flex items-center justify-center shadow-xs hover:bg-[#3B51E2] transition-transform active:scale-95 shrink-0"
+              title={isVoicePlaying ? 'Pause Voice Note' : 'Play Voice Note'}
+            >
+              {isVoicePlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}
+            </button>
+            <div className="space-y-1">
+              <div className="flex items-center space-x-1.5">
+                <Mic className="w-3.5 h-3.5 text-[#4F65F6]" />
+                <span className="text-[12px] font-extrabold text-[#101828]">
+                  {isVoicePlaying ? 'Playing Voice Note...' : 'Voice Note Attached'}
+                </span>
+              </div>
+              <div className="flex items-center space-x-1 h-3">
+                {[40, 70, 30, 90, 60, 100, 45, 80, 50, 30, 60, 40].map((h, i) => (
+                  <span
+                    key={i}
+                    style={{ height: `${h}%` }}
+                    className={`w-1 rounded-full transition-all duration-150 ${
+                      isVoicePlaying ? 'bg-[#4F65F6] animate-pulse' : 'bg-[#93C5FD]'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <span className="text-[11px] font-mono font-bold text-[#4F65F6] bg-white px-2.5 py-1 rounded-full border border-[#C7D2FE] shrink-0">
+            {post.audioDuration && post.audioDuration > 0 ? `${post.audioDuration}s` : 'Voice Note'}
+          </span>
+        </div>
+      )}
 
       {/* Notification Toast Confirmation */}
       {toastMsg && (

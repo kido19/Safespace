@@ -95,7 +95,7 @@ export default function CreatePostPage() {
     setRecordDuration(0);
   };
 
-  const saveToLocalUserPosts = (newPostObj) => {
+  const saveToLocalUserPosts = (newPostObj, token) => {
     try {
       const existingStr = localStorage.getItem('safespace_user_posts');
       let existing = [];
@@ -103,6 +103,13 @@ export default function CreatePostPage() {
         existing = JSON.parse(existingStr);
       }
       localStorage.setItem('safespace_user_posts', JSON.stringify([newPostObj, ...existing]));
+
+      if (token && newPostObj.id) {
+        const tokensStr = localStorage.getItem('safespace_post_tokens');
+        let tokens = tokensStr ? JSON.parse(tokensStr) : {};
+        tokens[newPostObj.id] = token;
+        localStorage.setItem('safespace_post_tokens', JSON.stringify(tokens));
+      }
     } catch (err) {
       console.warn('Failed to save to local user posts:', err);
     }
@@ -119,13 +126,16 @@ export default function CreatePostPage() {
     }
 
     setIsSubmitting(true);
-    const savedHandle = localStorage.getItem('safespace_handle') || 'QuietSun';
+    const savedHandle = localStorage.getItem('safespace_handle') || 'Anonymous';
 
     const newPostObj = {
       id: `user-post-${Date.now()}`,
       handle: savedHandle,
       body: trimmed,
       category: selectedTag,
+      hasVoiceNote: !!audioUrl,
+      audioUrl: audioUrl || null,
+      audioDuration: recordDuration || 0,
       created_at: new Date().toISOString(),
       hear: 0,
       alone: 0,
@@ -140,6 +150,9 @@ export default function CreatePostPage() {
           handle: savedHandle,
           body: trimmed,
           category: selectedTag,
+          hasVoiceNote: !!audioUrl,
+          audioUrl: audioUrl || null,
+          audioDuration: recordDuration || 0,
         }),
       });
 
@@ -149,7 +162,9 @@ export default function CreatePostPage() {
         if (data.flagged) {
           setIsCrisisOpen(true);
         } else {
-          saveToLocalUserPosts(data.post || newPostObj);
+          const finalPost = data.post || newPostObj;
+          const token = data.authorToken || finalPost.authorToken;
+          saveToLocalUserPosts(finalPost, token);
           router.push('/feed');
         }
       } else {

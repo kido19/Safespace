@@ -156,7 +156,7 @@ export default function ResourcesPage() {
     setGroundingSteps((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const tabs = ['Hotlines', 'Articles', 'Self-Care', 'Telegram Bot'];
+  const tabs = ['Hotlines', 'Articles', 'Self-Care'];
 
   return (
     <Layout showBack title="Resources & Care">
@@ -376,49 +376,6 @@ export default function ResourcesPage() {
                   );
                 })}
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: TELEGRAM BOT INTEGRATION */}
-        {activeTab === 'Telegram Bot' && (
-          <div className="space-y-4 pt-1">
-            <div className="bg-gradient-to-br from-[#1E2548] via-[#222B5D] to-[#12172D] text-white rounded-[24px] p-5 space-y-3.5 shadow-sm border border-[#2D3A6B]">
-              <div className="flex items-center space-x-2">
-                <div className="w-9 h-9 rounded-2xl bg-[#0088CC] text-white flex items-center justify-center font-black">
-                  <Bot className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-white text-[15px]">SafeSpace Telegram Bot</h3>
-                  <span className="text-[11px] text-slate-300 font-mono">@SafeSpaceSupportBot</span>
-                </div>
-              </div>
-
-              <p className="text-[12px] text-slate-300 leading-relaxed font-normal">
-                Post confessions, receive supportive Echoes, and get instant notifications directly inside Telegram!
-              </p>
-
-              <div className="bg-[#12172D] border border-slate-700/60 rounded-2xl p-3.5 space-y-2 text-xs">
-                <span className="text-[10px] font-bold text-[#0088CC] uppercase tracking-wider block">
-                  How Telegram Confessions Work:
-                </span>
-                <ul className="space-y-1.5 text-slate-200 text-[11.5px]">
-                  <li>1. Send <code className="bg-slate-800 text-cyan-300 px-1.5 py-0.5 rounded">/confess [your text]</code> to the Telegram bot.</li>
-                  <li>2. Bot assigns you a random handle (e.g. <code className="bg-slate-800 text-slate-300 px-1 py-0.5 rounded">QuietSun_42</code>).</li>
-                  <li>3. Receives inline reaction buttons: <code className="bg-slate-800 text-blue-300 px-1 py-0.5 rounded">👂 I hear you</code> <code className="bg-slate-800 text-purple-300 px-1 py-0.5 rounded">🤝 Not alone</code></li>
-                  <li>4. When peers react, the bot sends you private notifications on Telegram!</li>
-                </ul>
-              </div>
-
-              <a
-                href="https://t.me/SafeSpaceSupportBot"
-                target="_blank"
-                rel="noreferrer"
-                className="w-full bg-[#0088CC] hover:bg-[#0077B5] text-white font-bold text-xs py-3 px-4 rounded-full shadow-md transition-colors flex items-center justify-center space-x-2"
-              >
-                <Send className="w-4 h-4" />
-                <span>Open @SafeSpaceSupportBot on Telegram</span>
-              </a>
             </div>
           </div>
         )}

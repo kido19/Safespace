@@ -5,7 +5,7 @@ import { Settings, FileText, Bookmark, HelpCircle, Info, ChevronRight, X, Shield
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [handle, setHandle] = useState('QuietSun');
+  const [handle, setHandle] = useState('Anonymous');
   const [userPosts, setUserPosts] = useState([]);
   const [savedEchoes, setSavedEchoes] = useState([]);
   const [activeModal, setActiveModal] = useState(null);
@@ -49,13 +49,28 @@ export default function ProfilePage() {
     if (!window.confirm('Are you sure you want to delete this confession?')) return;
 
     try {
+      let myToken = '';
+      try {
+        const tokensStr = localStorage.getItem('safespace_post_tokens');
+        if (tokensStr && postId) {
+          const tokens = JSON.parse(tokensStr);
+          myToken = tokens[postId] || '';
+        }
+      } catch (e) {}
+
       const updatedPosts = userPosts.filter((p) => p.id !== postId && p.body !== postBody);
       setUserPosts(updatedPosts);
       localStorage.setItem('safespace_user_posts', JSON.stringify(updatedPosts));
 
-      // Send delete request to API
+      // Send delete request to API with secret author token
       if (postId) {
-        fetch(`/api/posts?id=${postId}`, { method: 'DELETE' }).catch(() => {});
+        fetch(`/api/posts?id=${postId}`, {
+          method: 'DELETE',
+          headers: {
+            'x-author-token': myToken,
+            'x-user-handle': handle,
+          },
+        }).catch(() => {});
       }
     } catch (err) {
       console.warn('Failed to delete user post:', err);

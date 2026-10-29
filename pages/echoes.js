@@ -58,7 +58,7 @@ export default function EchoesPage() {
     setLoading(false);
   };
 
-  const myHandle = typeof window !== 'undefined' ? localStorage.getItem('safespace_handle') || 'QuietSun' : 'QuietSun';
+  const myHandle = typeof window !== 'undefined' ? localStorage.getItem('safespace_handle') || 'Anonymous' : 'Anonymous';
 
   return (
     <Layout showBack title="Echoes & Validation">
@@ -159,22 +159,13 @@ export default function EchoesPage() {
                       </span>
                       <div className="flex flex-wrap gap-1.5">
                         <span className="bg-[#EEF2FF] text-[#4F65F6] text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-[#D9E2FE]">
-                          👂 8 I hear you
+                          👂 {p.hear || 0} I hear you
                         </span>
                         <span className="bg-[#F5F3FF] text-[#8B5CF6] text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-[#EDE9FE]">
-                          🤝 5 Not alone
+                          🤝 {p.alone || 0} Not alone
                         </span>
                         <span className="bg-[#F0F9FF] text-[#0284C7] text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-[#E0F2FE]">
-                          💪 3 Strength
-                        </span>
-                        <span className="bg-purple-50 text-purple-700 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-purple-200">
-                          💜 You matter
-                        </span>
-                        <span className="bg-rose-50 text-rose-700 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-rose-200">
-                          🌸 Sending love
-                        </span>
-                        <span className="bg-emerald-50 text-emerald-700 text-[11px] font-extrabold px-2.5 py-1 rounded-full border border-emerald-200">
-                          ✨ Stay strong
+                          💪 {p.strength || 0} Strength
                         </span>
                       </div>
                     </div>

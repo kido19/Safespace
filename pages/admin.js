@@ -2,32 +2,7 @@ import { useState } from 'react';
 import Layout from '../components/Layout';
 import { Lock, ShieldCheck, AlertTriangle, EyeOff, CheckCircle, Check, PhoneCall } from 'lucide-react';
 
-const FALLBACK_FLAGGED = [
-  {
-    id: 'mod-1',
-    handle: 'User_23',
-    created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-    body: 'I just want to end it all...',
-    matchedKeywords: ['end my life', 'die'],
-    category: 'Crisis Care',
-  },
-  {
-    id: 'mod-2',
-    handle: 'BlueSky',
-    created_at: new Date(Date.now() - 12 * 60 * 1000).toISOString(),
-    body: 'They all hate me at school...',
-    matchedKeywords: ['hate me'],
-    category: 'School Pressure',
-  },
-  {
-    id: 'mod-3',
-    handle: 'LostStar',
-    created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-    body: 'I cut myself again...',
-    matchedKeywords: ['cut myself', 'self-harm'],
-    category: 'Self-Harm Mention',
-  },
-];
+const FALLBACK_FLAGGED = [];
 
 export default function AdminDashboard() {
   const [password, setPassword] = useState('');

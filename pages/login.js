@@ -5,10 +5,10 @@ import { ChevronLeft, Signal, Wifi, ArrowRight, ShieldCheck, User } from 'lucide
 
 export default function LoginPage() {
   const router = useRouter();
-  const [handle, setHandle] = useState('QuietSun');
+  const [handle, setHandle] = useState('');
   const [error, setError] = useState('');
 
-  const quickHandles = ['QuietSun', 'Starling_17', 'BrightMoon', 'Moonlit'];
+  const quickHandles = [];
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -16,6 +16,14 @@ export default function LoginPage() {
     if (!trimmed) {
       setError('Please enter your handle to sign in.');
       return;
+    }
+
+    const prev = localStorage.getItem('safespace_handle');
+    if (prev !== trimmed) {
+      localStorage.removeItem('safespace_notifications');
+      localStorage.removeItem('safespace_user_posts');
+      localStorage.removeItem('safespace_saved_echoes');
+      localStorage.removeItem('safespace_post_tokens');
     }
 
     localStorage.setItem('safespace_handle', trimmed);
@@ -91,32 +99,6 @@ export default function LoginPage() {
                   />
                 </div>
                 {error && <p className="text-[11px] text-rose-500 font-bold">{error}</p>}
-              </div>
-
-              {/* Quick Select Demo Handles */}
-              <div className="space-y-2">
-                <span className="text-[11px] font-bold text-[#667085] uppercase tracking-wider block">
-                  Quick Select Demo Profile:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {quickHandles.map((item) => (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => {
-                        setHandle(item);
-                        setError('');
-                      }}
-                      className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all ${
-                        handle === item
-                          ? 'bg-[#4F65F6] text-white shadow-xs'
-                          : 'bg-[#F2F4F7] text-[#344054] hover:bg-[#E4E7EC]'
-                      }`}
-                    >
-                      {item}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <div className="space-y-3 pt-2">

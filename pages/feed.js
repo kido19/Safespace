@@ -3,47 +3,10 @@ import Layout from '../components/Layout';
 import PostCard from '../components/PostCard';
 import { Heart } from 'lucide-react';
 
-const SEED_FEED = [
-  {
-    id: 'post-1',
-    handle: 'Starling_17',
-    body: "I've been feeling so overwhelmed with school lately. I'm doing my best but it still feels like it's never enough. I'm so tired and I don't know what to do anymore...",
-    category: 'School',
-    hear: 52,
-    alone: 44,
-    strength: 32,
-    echoesCount: 128,
-    repliesCount: 12,
-    created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'post-2',
-    handle: 'BrightMoon',
-    body: 'Family pressure is so real... sometimes I just wish I could disappear for a little while and catch my breath without someone judging every move.',
-    category: 'Family',
-    hear: 30,
-    alone: 20,
-    strength: 14,
-    echoesCount: 64,
-    repliesCount: 7,
-    created_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'post-3',
-    handle: 'QuietSun',
-    body: 'Late night anxiety hit again. Remind yourselves that it is okay to rest when you are exhausted.',
-    category: 'Anxiety',
-    hear: 19,
-    alone: 25,
-    strength: 18,
-    echoesCount: 62,
-    repliesCount: 4,
-    created_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-  },
-];
+const SEED_FEED = [];
 
 export default function FeedPage() {
-  const [posts, setPosts] = useState(SEED_FEED);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All');
 
@@ -78,8 +41,8 @@ export default function FeedPage() {
       console.warn('Failed to parse local user posts:', err);
     }
 
-    // Combine local user posts at top, then API data, then seed feed, deduplicating by ID or body
-    const baseList = apiData.length > 0 ? apiData : SEED_FEED;
+    // Combine local user posts at top, then API data, deduplicating by ID or body
+    const baseList = apiData;
     const combined = [...localUserPosts];
 
     baseList.forEach((item) => {

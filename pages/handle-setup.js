@@ -18,7 +18,14 @@ export default function HandleSetupPage() {
 
   const handleContinue = (e) => {
     e.preventDefault();
-    const finalHandle = handle.trim() || 'QuietSun';
+    const finalHandle = handle.trim() || 'Anonymous';
+
+    // Clear old session storage so a newly registered handle starts completely clean
+    localStorage.removeItem('safespace_notifications');
+    localStorage.removeItem('safespace_user_posts');
+    localStorage.removeItem('safespace_saved_echoes');
+    localStorage.removeItem('safespace_post_tokens');
+
     localStorage.setItem('safespace_handle', finalHandle);
     router.push('/feed');
   };

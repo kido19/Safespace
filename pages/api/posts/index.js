@@ -3,63 +3,14 @@ import { supabaseAdmin } from "../../../lib/supabase-admin";
 import { rateLimit, ipOf } from "../../../lib/rate-limit";
 import { isCrisis } from "../../../lib/crisis-keywords";
 
-// Initial seed posts
-const SEED_POSTS = [
-  {
-    id: "seed-1",
-    handle: "OceanBreeze_19",
-    body: "Finals week is crushing me. My parents keep asking about GPA and I couldn't catch my breath in the library today. Just feeling like I'm not enough.",
-    hear: 24,
-    alone: 38,
-    strength: 15,
-    category: "School & Pressure",
-    created_at: new Date(Date.now() - 14 * 60 * 1000).toISOString(),
-    flagged: false,
-    hidden: false
-  },
-  {
-    id: "seed-2",
-    handle: "MorningFern_73",
-    body: "Moved into dorms two months ago and I still eat dinner alone in my room every evening. Seeing everyone laughing in groups in the hallway feels heavy.",
-    hear: 42,
-    alone: 57,
-    strength: 31,
-    category: "Loneliness",
-    created_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    flagged: false,
-    hidden: false
-  },
-  {
-    id: "seed-3",
-    handle: "GentleDolphin_08",
-    body: "Tried talking to my brother about my anxiety, but he told me to 'just workout and stop thinking so much'. Wish people understood mental health is real.",
-    hear: 19,
-    alone: 29,
-    strength: 44,
-    category: "Family Pressure",
-    created_at: new Date(Date.now() - 180 * 60 * 1000).toISOString(),
-    flagged: false,
-    hidden: false
-  },
-  {
-    id: "seed-4",
-    handle: "CalmOtter_42",
-    body: "Passed my final practical today after failing twice before! To anyone struggling: please keep going, your turning point is closer than it feels.",
-    hear: 67,
-    alone: 12,
-    strength: 88,
-    category: "Hope & Wins",
-    created_at: new Date(Date.now() - 320 * 60 * 1000).toISOString(),
-    flagged: false,
-    hidden: false
-  }
-];
+// No default seed posts — community starts clean so user inputs each post fresh
+const SEED_POSTS = [];
 
 // Persistent in-memory post store across session requests
 export let inMemoryPosts = [...SEED_POSTS];
 
 export default async function handler(req, res) {
-  // GET — List posts
+  // GET — List public posts (Stripping secret authorToken from public view)
   if (req.method === "GET") {
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -70,15 +21,19 @@ export default async function handler(req, res) {
           .limit(50);
 
         if (!error && data && data.length > 0) {
-          return res.json(data);
+          const publicData = data.map(({ authorToken, ...rest }) => rest);
+          return res.json(publicData);
         }
       }
     } catch (err) {
       console.warn("Supabase fetch fallback to memory store:", err.message);
     }
 
-    // Return in-memory feed (filtering out hidden & flagged posts)
-    const publicPosts = inMemoryPosts.filter((p) => !p.hidden && !p.flagged);
+    // Return in-memory feed without authorToken
+    const publicPosts = inMemoryPosts
+      .filter((p) => !p.hidden && !p.flagged)
+      .map(({ authorToken, ...rest }) => rest);
+
     return res.json(publicPosts);
   }
 
@@ -88,16 +43,22 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: "Too many posts, please wait a minute." });
     }
 
-    const { handle, body, category } = req.body || {};
+    const { handle, body, category, hasVoiceNote, audioUrl, audioDuration } = req.body || {};
     if (!handle || !body || body.length > 300) {
       return res.status(400).json({ error: "Invalid payload. Handle and body required." });
     }
 
     const crisis = isCrisis(body);
+    const authorToken = `tok_${Date.now()}_${Math.random().toString(36).substring(2, 12)}`;
+
     const newPost = {
       id: `post-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       handle,
       body,
+      hasVoiceNote: !!hasVoiceNote || !!audioUrl,
+      audioUrl: audioUrl || null,
+      audioDuration: audioDuration || 0,
+      authorToken, // Secret token saved on server
       hear: 0,
       alone: 0,
       strength: 0,
@@ -125,16 +86,42 @@ export default async function handler(req, res) {
       console.warn("Supabase insert fallback:", err.message);
     }
 
+    // Return post + authorToken ONLY to the creator
     return res.status(201).json({
       flagged: crisis,
-      post: newPost
+      post: newPost,
+      authorToken
     });
   }
 
-  // DELETE — Delete post by ID
+  // DELETE — Delete post by ID (Strict authorization: requires secret authorToken OR admin password)
   if (req.method === "DELETE") {
     const id = req.query.id || req.body?.id;
+    const requestToken = req.headers["x-author-token"] || req.query.authorToken || req.body?.authorToken;
+    const requestHandle = req.headers["x-user-handle"] || req.query.handle || req.body?.handle;
+    const adminPass = req.headers["x-admin-password"];
+    const isAdmin = adminPass && adminPass === (process.env.ADMIN_PASSWORD || "test123local");
+
     if (!id) return res.status(400).json({ error: "Post ID required" });
+
+    // Enforce strict permission check for non-admins
+    if (!isAdmin) {
+      const targetPost = inMemoryPosts.find((p) => p.id === id);
+
+      if (!targetPost) {
+        return res.status(403).json({ error: "Forbidden. You are not authorized to delete this post." });
+      }
+
+      if (targetPost.authorToken) {
+        if (!requestToken || targetPost.authorToken !== requestToken) {
+          return res.status(403).json({ error: "Forbidden. Invalid author token. You cannot delete another user's post." });
+        }
+      } else {
+        if (!requestHandle || targetPost.handle !== requestHandle) {
+          return res.status(403).json({ error: "Forbidden. You are not authorized to delete this post." });
+        }
+      }
+    }
 
     // Remove from inMemoryPosts
     inMemoryPosts = inMemoryPosts.filter((p) => p.id !== id);
@@ -152,3 +139,4 @@ export default async function handler(req, res) {
 
   return res.status(405).json({ error: "Method not allowed" });
 }
+
